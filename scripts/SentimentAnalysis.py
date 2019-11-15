@@ -11,11 +11,13 @@ Created on Wed Nov 13 11:37:01 2019
 
 # Import packages
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, learning_curve
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, cohen_kappa_score, \
                             classification_report, confusion_matrix
 from sklearn.feature_selection import VarianceThreshold, RFE
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 import plotly.express as px
 from plotly.offline import plot
 from sklearn.neighbors import KNeighborsClassifier
@@ -134,8 +136,33 @@ galaxy_rfe = galaxy_data.drop(galaxy_data.columns[rfe_fit_galaxy.ranking_],
                               axis=1)
 
 ##### Feature engineering
-# PCA
+# Learning curves
+train_sizes_iphone, train_scores_iphone, validation_scores_iphone = learning_curve(
+estimator = rf_classifier,
+X = iphone_corr.iloc[:,0:46],
+y = iphone_corr['iphonesentiment'], 
+train_sizes = [300, 500, 1000, 3000, 5000, 10000], 
+cv = 5,
+scoring = 'accuracy')
 
+train_sizes_galaxy, train_scores_galaxy, validation_scores_galaxy = learning_curve(
+estimator = rf_classifier,
+X = galaxy_corr.iloc[:,0:45],
+y = galaxy_corr['galaxysentiment'], 
+train_sizes = [300, 500, 1000, 3000, 5000, 10000], 
+cv = 5,
+scoring = 'accuracy')
+
+# Over sampling
+ros = RandomOverSampler(random_state=0)
+ros.fit(iphone_corr.iloc[:,0:46], iphone_corr['iphonesentiment'])
+iphone_resampled, isent_resampled = ros.sample(iphone_corr.iloc[:,0:46], 
+                                               iphone_corr['iphonesentiment'])
+iphone_resampled_complete = pd.DataFrame(iphone_resampled)
+iphone_resampled_complete['iphonesentiment'] = isent_resampled
+hist_iphone_resampled = px.histogram(iphone_resampled_complete,
+                                     x='iphonesentiment')
+plot(hist_iphone_resampled)
 
 """Models - iPhone"""
 ##### Out of the box
@@ -181,6 +208,7 @@ accuracy_score(val_isent_cor, rf_corr_predictions)
 confusion_matrix(val_isent_cor, rf_corr_predictions)
 classification_report(val_isent_cor, rf_corr_predictions)
 cohen_kappa_score(val_isent_cor, rf_corr_predictions)
+rf_classifier.feature_importances_
 
 #SVM 
 svc_model.fit(train_iphone_cor, train_isent_cor)
@@ -227,6 +255,35 @@ confusion_matrix(val_isent_rfe, knn_predictions_rfe)
 classification_report(val_isent_rfe, knn_predictions_rfe)
 cohen_kappa_score(val_isent_rfe, knn_predictions_rfe)
 
+##### Data after over sampling
+train_iphone_ros, val_iphone_ros, train_isent_ros, val_isent_ros = train_test_split(iphone_resampled, 
+                                                                    isent_resampled, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_iphone_ros, train_isent_ros)
+rf_ros_predictions = rf_classifier.predict(val_iphone_ros)
+accuracy_score(val_isent_ros, rf_ros_predictions)
+confusion_matrix(val_isent_ros, rf_ros_predictions)
+classification_report(val_isent_ros, rf_ros_predictions)
+cohen_kappa_score(val_isent_ros, rf_ros_predictions)
+
+#SVM 
+svc_model.fit(train_iphone_ros, train_isent_ros)
+svc_predictions_ros = svc_model.predict(val_iphone_ros)
+accuracy_score(val_isent_ros, svc_predictions_ros)
+confusion_matrix(val_isent_ros, svc_predictions_ros)
+classification_report(val_isent_ros, svc_predictions_ros)
+cohen_kappa_score(val_isent_ros, svc_predictions_ros)
+
+# KNN
+knn_model.fit(train_iphone_ros, train_isent_ros)
+knn_predictions_ros = knn_model.predict(val_iphone_ros)
+accuracy_score(val_isent_ros, knn_predictions_ros)
+confusion_matrix(val_isent_ros, knn_predictions_ros)
+classification_report(val_isent_ros, knn_predictions_ros)
+cohen_kappa_score(val_isent_ros, knn_predictions_ros)
+
 """Models - Galaxy"""
 ##### Out of the box
 train_galaxy, val_galaxy, train_gsent, val_gsent = train_test_split(galaxy_data.iloc[:,0:58], 
@@ -269,6 +326,7 @@ accuracy_score(val_gsent_cor, rf_corr_galaxy)
 confusion_matrix(val_gsent_cor, rf_corr_galaxy)
 classification_report(val_gsent_cor, rf_corr_galaxy)
 cohen_kappa_score(val_gsent_cor, rf_corr_galaxy)
+rf_classifier.feature_importances_
 
 #SVM 
 svc_model.fit(train_galaxy_cor, train_gsent_cor)
@@ -298,7 +356,6 @@ accuracy_score(val_gsent_rfe, rf_rfe_galaxy)
 confusion_matrix(val_gsent_rfe, rf_rfe_galaxy)
 classification_report(val_gsent_rfe, rf_rfe_galaxy)
 cohen_kappa_score(val_gsent_rfe, rf_rfe_galaxy)
-rf_classifier.feature_importances_
 
 #SVM 
 svc_model.fit(train_galaxy_rfe, train_gsent_rfe)
