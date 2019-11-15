@@ -11,23 +11,15 @@ Created on Wed Nov 13 11:37:01 2019
 
 # Import packages
 import pandas as pd
-from sklearn import preprocessing
-from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import mean_absolute_error, accuracy_score, \
-                            classification_report, confusion_matrix, \
-                            cohen_kappa_score
-from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, cohen_kappa_score, \
+                            classification_report, confusion_matrix
 from sklearn.feature_selection import VarianceThreshold, RFE
 import plotly.express as px
-import numpy as np
 from plotly.offline import plot
-from sklearn.pipeline import Pipeline
-from xgboost import XGBRegressor
-from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from math import sqrt, pi
 import plotly.graph_objects as go
 import plotly.io as pio
 pio.renderers.default = "browser"
@@ -141,6 +133,10 @@ rfe_fit_galaxy.ranking_
 galaxy_rfe = galaxy_data.drop(galaxy_data.columns[rfe_fit_galaxy.ranking_],
                               axis=1)
 
+##### Feature engineering
+# PCA
+
+
 """Models - iPhone"""
 ##### Out of the box
 train_iphone, val_iphone, train_isent, val_isent = train_test_split(iphone_data.iloc[:,0:58], 
@@ -148,12 +144,12 @@ train_iphone, val_iphone, train_isent, val_isent = train_test_split(iphone_data.
                                                                     random_state = 2)
 
 #Random Forest
-rf_classifier = RandomForestClassifier(n_estimators=400)
 rf_classifier.fit(train_iphone, train_isent)
 rf_classifier_predictions = rf_classifier.predict(val_iphone)
 accuracy_score(val_isent, rf_classifier_predictions)
 confusion_matrix(val_isent, rf_classifier_predictions)
 classification_report(val_isent, rf_classifier_predictions)
+cohen_kappa_score(val_isent, rf_classifier_predictions)
 
 #SVM 
 svc_model = SVC()
@@ -162,6 +158,7 @@ svc_predictions = svc_model.predict(val_iphone)
 accuracy_score(val_isent, svc_predictions)
 confusion_matrix(val_isent, svc_predictions)
 classification_report(val_isent, svc_predictions)
+cohen_kappa_score(val_isent, svc_predictions)
 
 # KNN
 knn_model = KNeighborsClassifier(n_neighbors=5)
@@ -170,9 +167,10 @@ knn_predictions = knn_model.predict(val_iphone)
 accuracy_score(val_isent, knn_predictions)
 confusion_matrix(val_isent, knn_predictions)
 classification_report(val_isent, knn_predictions)
+cohen_kappa_score(val_isent, knn_predictions)
 
 ##### Data without high correlated features
-train_iphone_cor, val_iphone_cor, train_isent_cor, val_isent_cor = train_test_split(iphone_corr.iloc[:,0:58], 
+train_iphone_cor, val_iphone_cor, train_isent_cor, val_isent_cor = train_test_split(iphone_corr.iloc[:,0:46], 
                                                                     iphone_corr['iphonesentiment'], 
                                                                     random_state = 2)
 
@@ -182,6 +180,7 @@ rf_corr_predictions = rf_classifier.predict(val_iphone_cor)
 accuracy_score(val_isent_cor, rf_corr_predictions)
 confusion_matrix(val_isent_cor, rf_corr_predictions)
 classification_report(val_isent_cor, rf_corr_predictions)
+cohen_kappa_score(val_isent_cor, rf_corr_predictions)
 
 #SVM 
 svc_model.fit(train_iphone_cor, train_isent_cor)
@@ -189,6 +188,7 @@ svc_predictions_cor = svc_model.predict(val_iphone_cor)
 accuracy_score(val_isent_cor, svc_predictions_cor)
 confusion_matrix(val_isent_cor, svc_predictions_cor)
 classification_report(val_isent_cor, svc_predictions_cor)
+cohen_kappa_score(val_isent_cor, svc_predictions_cor)
 
 # KNN
 knn_model.fit(train_iphone_cor, train_isent_cor)
@@ -196,9 +196,10 @@ knn_predictions_cor = knn_model.predict(val_iphone_cor)
 accuracy_score(val_isent_cor, knn_predictions_cor)
 confusion_matrix(val_isent_cor, knn_predictions_cor)
 classification_report(val_isent_cor, knn_predictions_cor)
+cohen_kappa_score(val_isent_cor, knn_predictions_cor)
 
 ##### Data after recursive feature elimination
-train_iphone_rfe, val_iphone_rfe, train_isent_rfe, val_isent_rfe = train_test_split(iphone_rfe.iloc[:,0:58], 
+train_iphone_rfe, val_iphone_rfe, train_isent_rfe, val_isent_rfe = train_test_split(iphone_rfe.iloc[:,0:28], 
                                                                     iphone_rfe['iphonesentiment'], 
                                                                     random_state = 2)
 
@@ -208,6 +209,7 @@ rf_rfe_predictions = rf_classifier.predict(val_iphone_rfe)
 accuracy_score(val_isent_rfe, rf_rfe_predictions)
 confusion_matrix(val_isent_rfe, rf_rfe_predictions)
 classification_report(val_isent_rfe, rf_rfe_predictions)
+cohen_kappa_score(val_isent_rfe, rf_rfe_predictions)
 
 #SVM 
 svc_model.fit(train_iphone_rfe, train_isent_rfe)
@@ -215,6 +217,7 @@ svc_predictions_rfe = svc_model.predict(val_iphone_rfe)
 accuracy_score(val_isent_rfe, svc_predictions_rfe)
 confusion_matrix(val_isent_rfe, svc_predictions_rfe)
 classification_report(val_isent_rfe, svc_predictions_rfe)
+cohen_kappa_score(val_isent_rfe, svc_predictions_rfe)
 
 # KNN
 knn_model.fit(train_iphone_rfe, train_isent_rfe)
@@ -222,6 +225,7 @@ knn_predictions_rfe = knn_model.predict(val_iphone_rfe)
 accuracy_score(val_isent_rfe, knn_predictions_rfe)
 confusion_matrix(val_isent_rfe, knn_predictions_rfe)
 classification_report(val_isent_rfe, knn_predictions_rfe)
+cohen_kappa_score(val_isent_rfe, knn_predictions_rfe)
 
 """Models - Galaxy"""
 ##### Out of the box
@@ -235,6 +239,7 @@ rf_predictions_galaxy = rf_classifier.predict(val_galaxy)
 accuracy_score(val_gsent, rf_predictions_galaxy)
 confusion_matrix(val_gsent, rf_predictions_galaxy)
 classification_report(val_gsent, rf_predictions_galaxy)
+cohen_kappa_score(val_gsent, rf_predictions_galaxy)
 
 #SVM 
 svc_model.fit(train_galaxy, train_gsent)
@@ -242,6 +247,7 @@ svc_predictions_galaxy = svc_model.predict(val_galaxy)
 accuracy_score(val_gsent, svc_predictions_galaxy)
 confusion_matrix(val_gsent, svc_predictions_galaxy)
 classification_report(val_gsent, svc_predictions_galaxy)
+cohen_kappa_score(val_gsent, svc_predictions_galaxy)
 
 # KNN
 knn_model.fit(train_galaxy, train_gsent)
@@ -249,9 +255,10 @@ knn_predictions_galaxy = knn_model.predict(val_galaxy)
 accuracy_score(val_gsent, knn_predictions_galaxy)
 confusion_matrix(val_gsent, knn_predictions_galaxy)
 classification_report(val_gsent, knn_predictions_galaxy)
+cohen_kappa_score(val_gsent, knn_predictions_galaxy)
 
 ##### Data without high correlated features
-train_galaxy_cor, val_galaxy_cor, train_gsent_cor, val_gsent_cor = train_test_split(galaxy_corr.iloc[:,0:58], 
+train_galaxy_cor, val_galaxy_cor, train_gsent_cor, val_gsent_cor = train_test_split(galaxy_corr.iloc[:,0:45], 
                                                                     galaxy_corr['galaxysentiment'], 
                                                                     random_state = 2)
 
@@ -261,6 +268,7 @@ rf_corr_galaxy = rf_classifier.predict(val_galaxy_cor)
 accuracy_score(val_gsent_cor, rf_corr_galaxy)
 confusion_matrix(val_gsent_cor, rf_corr_galaxy)
 classification_report(val_gsent_cor, rf_corr_galaxy)
+cohen_kappa_score(val_gsent_cor, rf_corr_galaxy)
 
 #SVM 
 svc_model.fit(train_galaxy_cor, train_gsent_cor)
@@ -268,6 +276,7 @@ svc_cor_galaxy = svc_model.predict(val_galaxy_cor)
 accuracy_score(val_gsent_cor, svc_cor_galaxy)
 confusion_matrix(val_gsent_cor, svc_cor_galaxy)
 classification_report(val_gsent_cor, svc_cor_galaxy)
+cohen_kappa_score(val_gsent_cor, svc_cor_galaxy)
 
 # KNN
 knn_model.fit(train_galaxy_cor, train_gsent_cor)
@@ -275,9 +284,10 @@ knn_cor_galaxy = knn_model.predict(val_galaxy_cor)
 accuracy_score(val_gsent_cor, knn_cor_galaxy)
 confusion_matrix(val_gsent_cor, knn_cor_galaxy)
 classification_report(val_gsent_cor, knn_cor_galaxy)
+cohen_kappa_score(val_gsent_cor, knn_cor_galaxy)
 
 ##### Data after recursive feature elimination
-train_galaxy_rfe, val_galaxy_rfe, train_gsent_rfe, val_gsent_rfe = train_test_split(galaxy_rfe.iloc[:,0:58], 
+train_galaxy_rfe, val_galaxy_rfe, train_gsent_rfe, val_gsent_rfe = train_test_split(galaxy_rfe.iloc[:,0:28], 
                                                                     galaxy_rfe['galaxysentiment'], 
                                                                     random_state = 2)
 
@@ -287,6 +297,8 @@ rf_rfe_galaxy = rf_classifier.predict(val_galaxy_rfe)
 accuracy_score(val_gsent_rfe, rf_rfe_galaxy)
 confusion_matrix(val_gsent_rfe, rf_rfe_galaxy)
 classification_report(val_gsent_rfe, rf_rfe_galaxy)
+cohen_kappa_score(val_gsent_rfe, rf_rfe_galaxy)
+rf_classifier.feature_importances_
 
 #SVM 
 svc_model.fit(train_galaxy_rfe, train_gsent_rfe)
@@ -294,6 +306,7 @@ svc_rfe_galaxy = svc_model.predict(val_galaxy_rfe)
 accuracy_score(val_gsent_rfe, svc_rfe_galaxy)
 confusion_matrix(val_gsent_rfe, svc_rfe_galaxy)
 classification_report(val_gsent_rfe, svc_rfe_galaxy)
+cohen_kappa_score(val_gsent_rfe, svc_rfe_galaxy)
 
 # KNN
 knn_model.fit(train_galaxy_rfe, train_gsent_rfe)
@@ -301,3 +314,4 @@ knn_rfe_galaxy = knn_model.predict(val_galaxy_rfe)
 accuracy_score(val_gsent_rfe, knn_rfe_galaxy)
 confusion_matrix(val_gsent_rfe, knn_rfe_galaxy)
 classification_report(val_gsent_rfe, knn_rfe_galaxy)
+cohen_kappa_score(val_gsent_rfe, knn_rfe_galaxy)
