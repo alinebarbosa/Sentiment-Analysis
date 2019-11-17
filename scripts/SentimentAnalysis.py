@@ -164,6 +164,35 @@ hist_iphone_resampled = px.histogram(iphone_resampled_complete,
                                      x='iphonesentiment')
 plot(hist_iphone_resampled)
 
+ros.fit(galaxy_corr.iloc[:,0:45], galaxy_corr['galaxysentiment'])
+galaxy_resampled, gsent_resampled = ros.sample(galaxy_corr.iloc[:,0:45], 
+                                               galaxy_corr['galaxysentiment'])
+galaxy_resampled_complete = pd.DataFrame(galaxy_resampled)
+galaxy_resampled_complete['galaxysentiment'] = gsent_resampled
+hist_galaxy_resampled = px.histogram(galaxy_resampled_complete,
+                                     x='galaxysentiment')
+plot(hist_galaxy_resampled)
+
+# Under sampling
+rus = RandomUnderSampler(random_state=0)           #, ratio={0: 30, 1: 20, 2: 60}
+rus.fit(iphone_corr.iloc[:,0:46], iphone_corr['iphonesentiment'])
+iphone_resampled_under, isent_resampled_under = rus.sample(iphone_corr.iloc[:,0:46], 
+                                               iphone_corr['iphonesentiment'])
+iphone_resampled_complete_under = pd.DataFrame(iphone_resampled_under)
+iphone_resampled_complete_under['iphonesentiment'] = isent_resampled_under
+hist_iphone_resampled_under = px.histogram(iphone_resampled_complete_under,
+                                     x='iphonesentiment')
+plot(hist_iphone_resampled_under)
+
+rus.fit(galaxy_corr.iloc[:,0:45], galaxy_corr['galaxysentiment'])
+galaxy_resampled_under, gsent_resampled_under = rus.sample(galaxy_corr.iloc[:,0:45], 
+                                               galaxy_corr['galaxysentiment'])
+galaxy_resampled_complete_under = pd.DataFrame(galaxy_resampled_under)
+galaxy_resampled_complete_under['galaxysentiment'] = gsent_resampled_under
+hist_galaxy_resampled_under = px.histogram(galaxy_resampled_complete_under,
+                                     x='galaxysentiment')
+plot(hist_galaxy_resampled_under)
+
 """Models - iPhone"""
 ##### Out of the box
 train_iphone, val_iphone, train_isent, val_isent = train_test_split(iphone_data.iloc[:,0:58], 
@@ -284,6 +313,35 @@ confusion_matrix(val_isent_ros, knn_predictions_ros)
 classification_report(val_isent_ros, knn_predictions_ros)
 cohen_kappa_score(val_isent_ros, knn_predictions_ros)
 
+##### Data after under sampling
+train_iphone_rus, val_iphone_rus, train_isent_rus, val_isent_rus = train_test_split(iphone_resampled_under, 
+                                                                    isent_resampled_under, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_iphone_rus, train_isent_rus)
+rf_rus_predictions = rf_classifier.predict(val_iphone_rus)
+accuracy_score(val_isent_rus, rf_rus_predictions)
+confusion_matrix(val_isent_rus, rf_rus_predictions)
+classification_report(val_isent_rus, rf_rus_predictions)
+cohen_kappa_score(val_isent_rus, rf_rus_predictions)
+
+#SVM 
+svc_model.fit(train_iphone_rus, train_isent_rus)
+svc_predictions_rus = svc_model.predict(val_iphone_rus)
+accuracy_score(val_isent_rus, svc_predictions_rus)
+confusion_matrix(val_isent_rus, svc_predictions_rus)
+classification_report(val_isent_rus, svc_predictions_rus)
+cohen_kappa_score(val_isent_rus, svc_predictions_rus)
+
+# KNN
+knn_model.fit(train_iphone_rus, train_isent_rus)
+knn_predictions_rus = knn_model.predict(val_iphone_rus)
+accuracy_score(val_isent_rus, knn_predictions_rus)
+confusion_matrix(val_isent_rus, knn_predictions_rus)
+classification_report(val_isent_rus, knn_predictions_rus)
+cohen_kappa_score(val_isent_rus, knn_predictions_rus)
+
 """Models - Galaxy"""
 ##### Out of the box
 train_galaxy, val_galaxy, train_gsent, val_gsent = train_test_split(galaxy_data.iloc[:,0:58], 
@@ -372,3 +430,61 @@ accuracy_score(val_gsent_rfe, knn_rfe_galaxy)
 confusion_matrix(val_gsent_rfe, knn_rfe_galaxy)
 classification_report(val_gsent_rfe, knn_rfe_galaxy)
 cohen_kappa_score(val_gsent_rfe, knn_rfe_galaxy)
+
+##### Data after over sampling
+train_galaxy_ros, val_galaxy_ros, train_gsent_ros, val_gsent_ros = train_test_split(galaxy_resampled, 
+                                                                    gsent_resampled, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_galaxy_ros, train_gsent_ros)
+rf_ros_galaxy = rf_classifier.predict(val_galaxy_ros)
+accuracy_score(val_gsent_ros, rf_ros_galaxy)
+confusion_matrix(val_gsent_ros, rf_ros_galaxy)
+classification_report(val_gsent_ros, rf_ros_galaxy)
+cohen_kappa_score(val_gsent_ros, rf_ros_galaxy)
+
+#SVM 
+svc_model.fit(train_galaxy_ros, train_gsent_ros)
+svc_ros_galaxy = svc_model.predict(val_galaxy_ros)
+accuracy_score(val_gsent_ros, svc_ros_galaxy)
+confusion_matrix(val_gsent_ros, svc_ros_galaxy)
+classification_report(val_gsent_ros, svc_ros_galaxy)
+cohen_kappa_score(val_gsent_ros, svc_ros_galaxy)
+
+# KNN
+knn_model.fit(train_galaxy_ros, train_gsent_ros)
+knn_ros_galaxy = knn_model.predict(val_galaxy_ros)
+accuracy_score(val_gsent_ros, knn_ros_galaxy)
+confusion_matrix(val_gsent_ros, knn_ros_galaxy)
+classification_report(val_gsent_ros, knn_ros_galaxy)
+cohen_kappa_score(val_gsent_ros, knn_ros_galaxy)
+
+##### Data after under sampling
+train_galaxy_rus, val_galaxy_rus, train_gsent_rus, val_gsent_rus = train_test_split(galaxy_resampled_under, 
+                                                                    gsent_resampled_under, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_galaxy_rus, train_gsent_rus)
+rf_rus_galaxy = rf_classifier.predict(val_galaxy_rus)
+accuracy_score(val_gsent_rus, rf_rus_galaxy)
+confusion_matrix(val_gsent_rus, rf_rus_galaxy)
+classification_report(val_gsent_rus, rf_rus_galaxy)
+cohen_kappa_score(val_gsent_rus, rf_rus_galaxy)
+
+#SVM 
+svc_model.fit(train_galaxy_rus, train_gsent_rus)
+svc_rus_galaxy = svc_model.predict(val_galaxy_rus)
+accuracy_score(val_gsent_rus, svc_rus_galaxy)
+confusion_matrix(val_gsent_rus, svc_rus_galaxy)
+classification_report(val_gsent_rus, svc_rus_galaxy)
+cohen_kappa_score(val_gsent_rus, svc_rus_galaxy)
+
+# KNN
+knn_model.fit(train_galaxy_rus, train_gsent_rus)
+knn_rus_galaxy = knn_model.predict(val_galaxy_rus)
+accuracy_score(val_gsent_rus, knn_rus_galaxy)
+confusion_matrix(val_gsent_rus, knn_rus_galaxy)
+classification_report(val_gsent_rus, knn_rus_galaxy)
+cohen_kappa_score(val_gsent_rus, knn_rus_galaxy)
