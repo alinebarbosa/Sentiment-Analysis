@@ -16,8 +16,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, cohen_kappa_score, \
                             classification_report, confusion_matrix
 from sklearn.feature_selection import VarianceThreshold, RFE
-from imblearn.over_sampling import RandomOverSampler
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler
+from imblearn.combine import SMOTETomek
 import plotly.express as px
 from plotly.offline import plot
 from sklearn.neighbors import KNeighborsClassifier
@@ -58,7 +59,7 @@ galaxy_data['galaxysentiment'] = pd.Series(galaxy_data['galaxysentiment'],
 
 
 # Basic plot
-hist_iphone = px.histogram(iphone_data, 
+hist_iphone = px.histogram(iphone_cor_3v, 
                     x="iphonesentiment")
 plot(hist_iphone)
 
@@ -139,9 +140,12 @@ galaxy_rfe = galaxy_data.drop(galaxy_data.columns[rfe_fit_galaxy.ranking_],
 # Learning curves
 train_sizes_iphone, train_scores_iphone, validation_scores_iphone = learning_curve(
 estimator = rf_classifier,
-X = iphone_corr.iloc[:,0:46],
-y = iphone_corr['iphonesentiment'], 
-train_sizes = [300, 500, 1000, 3000, 5000, 10000], 
+#X = iphone_corr.iloc[:,0:46],
+X = iphone_smote,
+#y = iphone_corr['iphonesentiment'],
+y =  isent_smote,
+train_sizes = [300, 500, 1000, 3000, 5000, 10000, 15000, 20000, 
+               30000, 40000, 50000, 60000, 70000], 
 cv = 5,
 scoring = 'accuracy')
 
@@ -153,7 +157,17 @@ train_sizes = [300, 500, 1000, 3000, 5000, 10000],
 cv = 5,
 scoring = 'accuracy')
 
-# Over sampling
+# Engineering the Dependant variable
+mapper = {0: 0, 1: 0, 2: 2, 3: 2, 4: 5, 5: 5}
+iphone_cor_3v = iphone_corr
+iphone_cor_3v['iphonesentiment'] = iphone_cor_3v['iphonesentiment'].map(mapper)
+iphone_cor_3v['iphonesentiment'] = pd.Series(iphone_cor_3v['iphonesentiment'],
+                                           dtype="category")
+iphone_cor_3v.dtypes
+iphone_cor_3v['iphonesentiment'].unique()
+
+### Over sampling
+# Random over sampler
 ros = RandomOverSampler(random_state=0)
 ros.fit(iphone_corr.iloc[:,0:46], iphone_corr['iphonesentiment'])
 iphone_resampled, isent_resampled = ros.sample(iphone_corr.iloc[:,0:46], 
@@ -173,7 +187,19 @@ hist_galaxy_resampled = px.histogram(galaxy_resampled_complete,
                                      x='galaxysentiment')
 plot(hist_galaxy_resampled)
 
-# Under sampling
+# SMOTE
+smote = SMOTE(ratio={0: 100000, 2: 100000, 5: 100000}, random_state=0)
+iphone_smote, isent_smote = smote.fit_sample(iphone_cor_3v.iloc[:,0:46], 
+                                      iphone_cor_3v['iphonesentiment']) 
+iphone_smote_complete = pd.DataFrame(iphone_smote)
+iphone_smote_complete['iphonesentiment'] = isent_smote
+iphone_smote_complete['iphonesentiment'].unique()
+hist_iphone_smote = px.histogram(iphone_smote_complete,
+                                     x='iphonesentiment')
+plot(hist_iphone_smote)
+
+### Under sampling
+# Random under sampler
 rus = RandomUnderSampler(random_state=0)           #, ratio={0: 30, 1: 20, 2: 60}
 rus.fit(iphone_corr.iloc[:,0:46], iphone_corr['iphonesentiment'])
 iphone_resampled_under, isent_resampled_under = rus.sample(iphone_corr.iloc[:,0:46], 
@@ -192,6 +218,30 @@ galaxy_resampled_complete_under['galaxysentiment'] = gsent_resampled_under
 hist_galaxy_resampled_under = px.histogram(galaxy_resampled_complete_under,
                                      x='galaxysentiment')
 plot(hist_galaxy_resampled_under)
+
+### Combine over and under sampling
+# SMOTETomek
+smt = SMOTETomek(ratio='auto')
+iphone_smt, isent_smt = smt.fit_sample(iphone_smote, 
+                                      isent_smote) 
+iphone_smt_complete = pd.DataFrame(iphone_smt)
+iphone_smt_complete['iphonesentiment'] = isent_smt
+hist_iphone_smt = px.histogram(iphone_smt_complete,
+                                     x='iphonesentiment')
+plot(hist_iphone_smt)
+
+# ADASYN
+adasyn = ADASYN(ratio={0: 30000, 2: 30000, 5: 30000}, random_state=0)
+iphone_adasyn, isent_adasyn = adasyn.fit_sample(iphone_smt, 
+                                      isent_smt) 
+isent_adasyn.dtype
+iphone_adasyn_complete = pd.DataFrame(iphone_adasyn)
+iphone_adasyn_complete['iphonesentiment'] = pd.Series(isent_adasyn, 
+                                           dtype="category")
+iphone_adasyn_complete['iphonesentiment'].unique()
+hist_iphone_adasyn = px.histogram(iphone_adasyn_complete,
+                                     x='iphonesentiment')
+plot(hist_iphone_adasyn)
 
 """Models - iPhone"""
 ##### Out of the box
@@ -313,6 +363,35 @@ confusion_matrix(val_isent_ros, knn_predictions_ros)
 classification_report(val_isent_ros, knn_predictions_ros)
 cohen_kappa_score(val_isent_ros, knn_predictions_ros)
 
+##### Data after SMOTE
+train_iphone_smote, val_iphone_smote, train_isent_smote, val_isent_smote = train_test_split(iphone_smote, 
+                                                                    isent_smote, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_iphone_smote, train_isent_smote)
+rf_smote_predictions = rf_classifier.predict(val_iphone_smote)
+accuracy_score(val_isent_smote, rf_smote_predictions)
+confusion_matrix(val_isent_smote, rf_smote_predictions)
+classification_report(val_isent_smote, rf_smote_predictions)
+cohen_kappa_score(val_isent_smote, rf_smote_predictions)
+
+#SVM 
+svc_model.fit(train_iphone_smote, train_isent_smote)
+svc_predictions_smote = svc_model.predict(val_iphone_smote)
+accuracy_score(val_isent_smote, svc_predictions_smote)
+confusion_matrix(val_isent_smote, svc_predictions_smote)
+classification_report(val_isent_smote, svc_predictions_smote)
+cohen_kappa_score(val_isent_smote, svc_predictions_smote)
+
+# KNN
+knn_model.fit(train_iphone_smote, train_isent_smote)
+knn_predictions_smote = knn_model.predict(val_iphone_smote)
+accuracy_score(val_isent_smote, knn_predictions_smote)
+confusion_matrix(val_isent_smote, knn_predictions_smote)
+classification_report(val_isent_smote, knn_predictions_smote)
+cohen_kappa_score(val_isent_smote, knn_predictions_smote)
+
 ##### Data after under sampling
 train_iphone_rus, val_iphone_rus, train_isent_rus, val_isent_rus = train_test_split(iphone_resampled_under, 
                                                                     isent_resampled_under, 
@@ -341,6 +420,64 @@ accuracy_score(val_isent_rus, knn_predictions_rus)
 confusion_matrix(val_isent_rus, knn_predictions_rus)
 classification_report(val_isent_rus, knn_predictions_rus)
 cohen_kappa_score(val_isent_rus, knn_predictions_rus)
+
+##### Data after SMOTETomek
+train_iphone_smt, val_iphone_smt, train_isent_smt, val_isent_smt = train_test_split(iphone_smt, 
+                                                                    isent_smt, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_iphone_smt, train_isent_smt)
+rf_smt_predictions = rf_classifier.predict(val_iphone_smt)
+accuracy_score(val_isent_smt, rf_smt_predictions)
+confusion_matrix(val_isent_smt, rf_smt_predictions)
+classification_report(val_isent_smt, rf_smt_predictions)
+cohen_kappa_score(val_isent_smt, rf_smt_predictions)
+
+#SVM 
+svc_model.fit(train_iphone_smt, train_isent_smt)
+svc_predictions_smt = svc_model.predict(val_iphone_smt)
+accuracy_score(val_isent_smt, svc_predictions_smt)
+confusion_matrix(val_isent_smt, svc_predictions_smt)
+classification_report(val_isent_smt, svc_predictions_smt)
+cohen_kappa_score(val_isent_smt, svc_predictions_smt)
+
+# KNN
+knn_model.fit(train_iphone_smt, train_isent_smt)
+knn_predictions_smt = knn_model.predict(val_iphone_smt)
+accuracy_score(val_isent_smt, knn_predictions_smt)
+confusion_matrix(val_isent_smt, knn_predictions_smt)
+classification_report(val_isent_smt, knn_predictions_smt)
+cohen_kappa_score(val_isent_smt, knn_predictions_smt)
+
+##### Data after ADASYN
+train_iphone_adasyn, val_iphone_adasyn, train_isent_adasyn, val_isent_adasyn = train_test_split(iphone_adasyn, 
+                                                                    isent_adasyn, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_iphone_adasyn, train_isent_adasyn)
+rf_adasyn_predictions = rf_classifier.predict(val_iphone_adasyn)
+accuracy_score(val_isent_adasyn, rf_adasyn_predictions)
+confusion_matrix(val_isent_adasyn, rf_adasyn_predictions)
+classification_report(val_isent_adasyn, rf_adasyn_predictions)
+cohen_kappa_score(val_isent_adasyn, rf_adasyn_predictions)
+
+#SVM 
+svc_model.fit(train_iphone_adasyn, train_isent_adasyn)
+svc_predictions_adasyn = svc_model.predict(val_iphone_adasyn)
+accuracy_score(val_isent_adasyn, svc_predictions_adasyn)
+confusion_matrix(val_isent_adasyn, svc_predictions_adasyn)
+classification_report(val_isent_adasyn, svc_predictions_adasyn)
+cohen_kappa_score(val_isent_adasyn, svc_predictions_adasyn)
+
+# KNN
+knn_model.fit(train_iphone_adasyn, train_isent_adasyn)
+knn_predictions_adasyn = knn_model.predict(val_iphone_adasyn)
+accuracy_score(val_isent_adasyn, knn_predictions_adasyn)
+confusion_matrix(val_isent_adasyn, knn_predictions_adasyn)
+classification_report(val_isent_adasyn, knn_predictions_adasyn)
+cohen_kappa_score(val_isent_adasyn, knn_predictions_adasyn)
 
 """Models - Galaxy"""
 ##### Out of the box
