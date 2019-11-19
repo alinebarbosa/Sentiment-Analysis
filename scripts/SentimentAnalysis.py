@@ -31,10 +31,16 @@ pio.renderers.default = "browser"
 # Save filepath to variable for easier access
 iphone_data_path = '/home/aline/Documentos/Ubiqum/Big data/SentimentAnalysis/data/iphone_smallmatrix_labeled_8d.csv'
 galaxy_data_path = '/home/aline/Documentos/Ubiqum/Big data/SentimentAnalysis/data/galaxy_smallmatrix_labeled_9d.csv'
+large_matrix_path = '/home/aline/Documentos/Ubiqum/Big data/SentimentAnalysis/data/LargeMatrixMerged.csv'
 
 # read the data and store data in DataFrame
 iphone_data = pd.read_csv(iphone_data_path) 
 galaxy_data = pd.read_csv(galaxy_data_path)
+large_matrix = pd.read_csv(large_matrix_path)
+
+# Create test data
+iphone_test = large_matrix.drop(["id"], axis=1)
+galaxy_test = large_matrix.drop(["id"], axis=1)
 
 """Get to know the data"""
 # Print a summary of the data
@@ -59,7 +65,7 @@ galaxy_data['galaxysentiment'] = pd.Series(galaxy_data['galaxysentiment'],
 
 
 # Basic plot
-hist_iphone = px.histogram(iphone_cor_3v, 
+hist_iphone = px.histogram(iphone_data, 
                     x="iphonesentiment")
 plot(hist_iphone)
 
@@ -98,8 +104,33 @@ iphone_corr = iphone_data.drop(["nokiacamunc",
                                 "googleperneg",
                                 "nokiadispos",
                                 "htcdispos"], axis=1)
+iphone_test = iphone_test.drop(["nokiacamunc", 
+                                "iosperunc", 
+                                "nokiaperunc", 
+                                "nokiacampos",
+                                "samsungdisunc",
+                                "ios",
+                                "iosperneg",
+                                "samsungdisneg",
+                                "nokiaperneg",
+                                "googleperneg",
+                                "nokiadispos",
+                                "htcdispos"], axis=1)
     
 galaxy_corr = galaxy_data.drop(["nokiacamunc", 
+                                "iosperunc", 
+                                "nokiaperunc", 
+                                "nokiacampos",
+                                "samsungdisunc",
+                                "ios",
+                                "iosperneg",
+                                "samsungdisneg",
+                                "nokiaperneg",
+                                "googleperneg",
+                                "nokiadispos",
+                                "htcdispos",
+                                "sonydisneg"], axis=1)
+galaxy_test = galaxy_test.drop(["nokiacamunc", 
                                 "iosperunc", 
                                 "nokiaperunc", 
                                 "nokiacampos",
@@ -137,26 +168,6 @@ galaxy_rfe = galaxy_data.drop(galaxy_data.columns[rfe_fit_galaxy.ranking_],
                               axis=1)
 
 ##### Feature engineering
-# Learning curves
-train_sizes_iphone, train_scores_iphone, validation_scores_iphone = learning_curve(
-estimator = rf_classifier,
-#X = iphone_corr.iloc[:,0:46],
-X = iphone_smote,
-#y = iphone_corr['iphonesentiment'],
-y =  isent_smote,
-train_sizes = [300, 500, 1000, 3000, 5000, 10000, 15000, 20000, 
-               30000, 40000, 50000, 60000, 70000], 
-cv = 5,
-scoring = 'accuracy')
-
-train_sizes_galaxy, train_scores_galaxy, validation_scores_galaxy = learning_curve(
-estimator = rf_classifier,
-X = galaxy_corr.iloc[:,0:45],
-y = galaxy_corr['galaxysentiment'], 
-train_sizes = [300, 500, 1000, 3000, 5000, 10000], 
-cv = 5,
-scoring = 'accuracy')
-
 # Engineering the Dependant variable
 mapper = {0: 0, 1: 0, 2: 2, 3: 2, 4: 5, 5: 5}
 iphone_cor_3v = iphone_corr
@@ -165,6 +176,19 @@ iphone_cor_3v['iphonesentiment'] = pd.Series(iphone_cor_3v['iphonesentiment'],
                                            dtype="category")
 iphone_cor_3v.dtypes
 iphone_cor_3v['iphonesentiment'].unique()
+hist_iphone_3v = px.histogram(iphone_cor_3v, 
+                    x="iphonesentiment")
+plot(hist_iphone_3v)
+
+galaxy_cor_3v = galaxy_corr
+galaxy_cor_3v['galaxysentiment'] = galaxy_cor_3v['galaxysentiment'].map(mapper)
+galaxy_cor_3v['galaxysentiment'] = pd.Series(galaxy_cor_3v['galaxysentiment'],
+                                           dtype="category")
+galaxy_cor_3v.dtypes
+galaxy_cor_3v['galaxysentiment'].unique()
+hist_galaxy_3v = px.histogram(galaxy_cor_3v, 
+                    x="galaxysentiment")
+plot(hist_galaxy_3v)
 
 ### Over sampling
 # Random over sampler
@@ -191,12 +215,23 @@ plot(hist_galaxy_resampled)
 smote = SMOTE(ratio={0: 100000, 2: 100000, 5: 100000}, random_state=0)
 iphone_smote, isent_smote = smote.fit_sample(iphone_cor_3v.iloc[:,0:46], 
                                       iphone_cor_3v['iphonesentiment']) 
-iphone_smote_complete = pd.DataFrame(iphone_smote)
+iphone_smote_complete = pd.DataFrame(iphone_smote, 
+                            columns=list(iphone_cor_3v.iloc[:,0:46].columns))
 iphone_smote_complete['iphonesentiment'] = isent_smote
 iphone_smote_complete['iphonesentiment'].unique()
 hist_iphone_smote = px.histogram(iphone_smote_complete,
                                      x='iphonesentiment')
 plot(hist_iphone_smote)
+
+galaxy_smote, gsent_smote = smote.fit_sample(galaxy_cor_3v.iloc[:,0:45], 
+                                      galaxy_cor_3v['galaxysentiment']) 
+galaxy_smote_complete = pd.DataFrame(galaxy_smote,
+                            columns=list(galaxy_cor_3v.iloc[:,0:45].columns))
+galaxy_smote_complete['galaxysentiment'] = gsent_smote
+galaxy_smote_complete['galaxysentiment'].unique()
+hist_galaxy_smote = px.histogram(galaxy_smote_complete,
+                                     x='galaxysentiment')
+plot(hist_galaxy_smote)
 
 ### Under sampling
 # Random under sampler
@@ -242,6 +277,24 @@ iphone_adasyn_complete['iphonesentiment'].unique()
 hist_iphone_adasyn = px.histogram(iphone_adasyn_complete,
                                      x='iphonesentiment')
 plot(hist_iphone_adasyn)
+
+### Learning curves
+train_sizes_iphone, train_scores_iphone, validation_scores_iphone = learning_curve(
+estimator = rf_classifier,
+X = iphone_smote,
+y =  isent_smote,
+train_sizes = [300, 500, 1000, 3000, 5000, 10000, 15000, 20000, 
+               30000, 40000, 50000, 60000, 70000], 
+cv = 5,
+scoring = 'accuracy')
+
+train_sizes_galaxy, train_scores_galaxy, validation_scores_galaxy = learning_curve(
+estimator = rf_classifier,
+X = galaxy_corr.iloc[:,0:45],
+y = galaxy_corr['galaxysentiment'], 
+train_sizes = [300, 500, 1000, 3000, 5000, 10000], 
+cv = 5,
+scoring = 'accuracy')
 
 """Models - iPhone"""
 ##### Out of the box
@@ -625,3 +678,51 @@ accuracy_score(val_gsent_rus, knn_rus_galaxy)
 confusion_matrix(val_gsent_rus, knn_rus_galaxy)
 classification_report(val_gsent_rus, knn_rus_galaxy)
 cohen_kappa_score(val_gsent_rus, knn_rus_galaxy)
+
+##### Data after SMOTE
+train_galaxy_smote, val_galaxy_smote, train_gsent_smote, val_gsent_smote = train_test_split(galaxy_smote, 
+                                                                    gsent_smote, 
+                                                                    random_state = 2)
+
+#Random Forest
+rf_classifier.fit(train_galaxy_smote, train_gsent_smote)
+rf_smote_galaxy = rf_classifier.predict(val_galaxy_smote)
+accuracy_score(val_gsent_smote, rf_smote_galaxy)
+confusion_matrix(val_gsent_smote, rf_smote_galaxy)
+classification_report(val_gsent_smote, rf_smote_galaxy)
+cohen_kappa_score(val_gsent_smote, rf_smote_galaxy)
+
+#SVM 
+svc_model.fit(train_galaxy_smote, train_gsent_smote)
+svc_smote_galaxy = svc_model.predict(val_galaxy_smote)
+accuracy_score(val_gsent_smote, svc_smote_galaxy)
+confusion_matrix(val_gsent_smote, svc_smote_galaxy)
+classification_report(val_gsent_smote, svc_smote_galaxy)
+cohen_kappa_score(val_gsent_smote, svc_smote_galaxy)
+
+# KNN
+knn_model.fit(train_galaxy_smote, train_gsent_smote)
+knn_smote_galaxy = knn_model.predict(val_galaxy_smote)
+accuracy_score(val_gsent_smote, knn_smote_galaxy)
+confusion_matrix(val_gsent_smote, knn_smote_galaxy)
+classification_report(val_gsent_smote, knn_smote_galaxy)
+cohen_kappa_score(val_gsent_smote, knn_smote_galaxy)
+
+"""Apply model - Test"""
+# RF - iPhone
+rf_classifier.fit(iphone_smote_complete.iloc[:,0:46], 
+                  iphone_smote_complete['iphonesentiment'])
+rf_iphone_final = rf_classifier.predict(iphone_test)
+iphone_test['iphonesentiment'] = pd.Series(rf_iphone_final, dtype="category")
+hist_iphone_final = px.histogram(iphone_test, 
+                                 x="iphonesentiment")
+plot(hist_iphone_final)
+
+# RF - Galaxy
+rf_classifier.fit(galaxy_smote_complete.iloc[:,0:45], 
+                  galaxy_smote_complete['galaxysentiment'])
+rf_galaxy_final = rf_classifier.predict(galaxy_test)
+galaxy_test['galaxysentiment'] = pd.Series(rf_galaxy_final, dtype="category")
+hist_galaxy_final = px.histogram(galaxy_test, 
+                                 x="galaxysentiment")
+plot(hist_galaxy_final)
